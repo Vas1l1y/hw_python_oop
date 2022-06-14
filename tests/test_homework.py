@@ -1,189 +1,169 @@
-import re
-import pytest
-import types
-import inspect
-from conftest import Capturing
-
-try:
-    import homework
-except ModuleNotFoundError:
-    assert False, 'Не найден файл с домашней работой `homework.py`'
-except NameError as exc:
-    name = re.findall("name '(\w+)' is not defined", str(exc))[0]
-    assert False, f'Класс {name} не обнаружен в файле домашней работы.'
-except ImportError:
-    assert False, 'Не найден файл с домашней работой `homework.py`'
+from typing import List, Type, Dict
+from dataclasses import dataclass, asdict
 
 
-def test_read_package():
-    assert hasattr(homework, 'read_package'), (
-        'Создайте функцию для обработки '
-        'входящего пакета - `read_package`'
-    )
-    assert callable(homework.read_package), (
-        'Проверьте, что `read_package` - это функция.'
-    )
-    assert isinstance(homework.read_package, types.FunctionType), (
-        'Проверьте, что `read_package` - это функция.'
-    )
+@dataclass
+class InfoMessage:
+    """Информационное сообщение о тренировке."""
+    training_type: str
+    duration: float
+    distance: float
+    speed: float
+    calories: float
+    MESSAGE = ('Тип тренировки: {training_type}; '
+               'Длительность: {duration:0.3f} ч.; '
+               'Дистанция: {distance:0.3f} км; '
+               'Ср. скорость: {speed:0.3f} км/ч; '
+               'Потрачено ккал: {calories:0.3f}.')
+
+    def get_message(self) -> str:
+        return self.MESSAGE.format(**asdict(self))
 
 
-@pytest.mark.parametrize('input_data, expected', [
-    (('SWM', [720, 1, 80, 25, 40]), 'Swimming'),
-    (('RUN', [15000, 1, 75]), 'Running'),
-    (('WLK', [9000, 1, 75, 180]), 'SportsWalking'),
-])
-def test_read_package_return(input_data, expected):
-    result = homework.read_package(*input_data)
-    assert result.__class__.__name__ == expected, (
-        'Функция `read_package` должна возвращать класс '
-        'вида спорта в зависимости от кода тренировки.'
-    )
+class Training:
+    """Базовый класс тренировки."""
+    LEN_STEP = 0.65
+    M_IN_KM = 1000
+    HOUR_IN_MIN = 60
+
+    def __init__(self,
+                 action: int,
+                 duration: float,
+                 weight: float,
+                 ) -> None:
+        self.action = action
+        self.duration = duration
+        self.weight = weight
+
+    def get_distance(self) -> float:
+        """Получить дистанцию в км."""
+        distance: float
+        distance = self.action * self.LEN_STEP / self.M_IN_KM
+        return distance
+
+    def get_mean_speed(self) -> float:
+        """Получить среднюю скорость движения."""
+        speed: float
+        speed = (self.get_distance() / self.duration)
+        return speed
+
+    def get_spent_calories(self) -> float:
+        """Получить количество затраченных калорий."""
+        raise NotImplementedError('Определите get_spent_calories в %s.'
+                                  % (type(self).__name__))
+
+    def show_training_info(self) -> InfoMessage:
+        """Вернуть информационное сообщение о выполненной тренировке."""
+        return InfoMessage(type(self).__name__,
+                           self.duration,
+                           self.get_distance(),
+                           self.get_mean_speed(),
+                           self.get_spent_calories()
+                           )
 
 
-def test_InfoMessage():
-    assert inspect.isclass(homework.InfoMessage), (
-        'Проверьте, что `InfoMessage` - это класс.'
-    )
-    info_message = homework.InfoMessage
-    info_message_signature = inspect.signature(info_message)
-    info_message_signature_list = list(info_message_signature.parameters)
-    for p in ['training_type', 'duration', 'distance', 'speed', 'calories']:
-        assert p in info_message_signature_list, (
-            'У метода `__init__` класса `InfoMessage` должен быть '
-            f'параметр {p}.'
-        )
+class Running(Training):
+    """Тренировка: бег."""
+    coeff_cal_run1: int = 18
+    coeff_cal_run2: int = 20
+
+    def get_spent_calories(self) -> float:
+        """Получить количество затраченных калорий."""
+        duration_minute: float = self.duration * self.HOUR_IN_MIN
+        calories: float
+        calories = ((self.coeff_cal_run1 * self.get_mean_speed()
+                    - self.coeff_cal_run2) * self.weight
+                    / self.M_IN_KM * duration_minute)
+        return calories
 
 
-@pytest.mark.parametrize('input_data, expected', [
-    (['Swimming', 1, 75, 1, 80],
-        'Тип тренировки: Swimming; '
-        'Длительность: 1.000 ч.; '
-        'Дистанция: 75.000 км; '
-        'Ср. скорость: 1.000 км/ч; '
-        'Потрачено ккал: 80.000.'
-     ),
-    (['Running', 4, 20, 4, 20],
-        'Тип тренировки: Running; '
-        'Длительность: 4.000 ч.; '
-        'Дистанция: 20.000 км; '
-        'Ср. скорость: 4.000 км/ч; '
-        'Потрачено ккал: 20.000.'
-     ),
-    (['SportsWalking', 12, 6, 12, 6],
-        'Тип тренировки: SportsWalking; '
-        'Длительность: 12.000 ч.; '
-        'Дистанция: 6.000 км; '
-        'Ср. скорость: 12.000 км/ч; '
-        'Потрачено ккал: 6.000.'
-     ),
-])
-def test_InfoMessage_get_message(input_data, expected):
-    info_message = homework.InfoMessage(*input_data)
-    assert hasattr(info_message, 'get_message'), (
-        'Создайте метод `get_message` в классе `InfoMessage`.'
-    )
-    assert callable(info_message.get_message), (
-        'Проверьте, что `get_message` в классе `InfoMessage` - это метод.'
-    )
-    result = info_message.get_message()
-    assert isinstance(result, str), (
-        'Метод `get_message` в классе `InfoMessage`'
-        'должен возвращать значение типа `str`'
-    )
-    assert result == expected, (
-        'Метод `get_message` класса `InfoMessage` должен возвращать строку.\n'
-        'Например: \n'
-        'Тип тренировки: Swimming; '
-        'Длительность: 1.000 ч.; '
-        'Дистанция: 75.000 км; '
-        'Ср. скорость: 1.000 км/ч; '
-        'Потрачено ккал: 80.000.'
-    )
+class SportsWalking(Training):
+    """Тренировка: спортивная ходьба."""
+    coeff_cal_walk_1: float = 0.035
+    coeff_cal_walk_2: float = 0.029
+
+    def __init__(self,
+                 action: int,
+                 duration: float,
+                 weight: float,
+                 height: float
+                 ) -> float:
+        super().__init__(action, duration, weight)
+        self.height = height
+
+    def get_spent_calories(self) -> float:
+        """Получить количество затраченных калорий."""
+        duration_minute: float = self.duration * self.HOUR_IN_MIN
+        calories = (self.coeff_cal_walk_1 * self.weight
+                    + (self.get_mean_speed()**2 // self.height)
+                    * self.coeff_cal_walk_2 * self.weight) * duration_minute
+        return calories
 
 
-def test_Training():
-    assert inspect.isclass(homework.Training), (
-        'Проверьте, что `Training` - это класс.'
-    )
-    training = homework.Training
-    training_signature = inspect.signature(training)
-    training_signature_list = list(training_signature.parameters)
-    for param in ['action', 'duration', 'weight']:
-        assert param in training_signature_list, (
-            'У метода `__init__` класса `Training` должен быть '
-            f' параметр {param}.'
-        )
-    assert 'LEN_STEP' in list(training.__dict__), (
-        'Задайте атрибут `LEN_STEP` в классе `Training`'
-    )
-    assert training.LEN_STEP == 0.65, (
-        'Длина шага в классе `Training` должна быть равна 0.65'
-    )
-    assert 'M_IN_KM' in list(training.__dict__), (
-        'Задайте атрибут `M_IN_KM` в классе `Training`'
-    )
-    assert training.M_IN_KM == 1000, (
-        'В классе `Training` укажите правильное '
-        'количество метров в километре: 1000'
-    )
+class Swimming(Training):
+    """Тренировка: плавание."""
+    LEN_STEP = 1.38
+    coeff_cal_swim_1: float = 1.1
+    coeff_cal_swim_2: int = 2
+
+    def __init__(self,
+                 action: int,
+                 duration: float,
+                 weight: float,
+                 length_pool: float,
+                 count_pool: float
+                 ) -> None:
+        super().__init__(action, duration, weight)
+        self.length_pool = length_pool
+        self.count_pool = count_pool
+
+    def get_mean_speed(self) -> float:
+        """Получить среднюю скорость движения."""
+        speed: float
+        speed = (self.length_pool * self.count_pool
+                 / self.M_IN_KM / self.duration)
+        return speed
+
+    def get_distance(self) -> float:
+        """Получить дистанцию в км."""
+        distance: float = self.action * self.LEN_STEP / self.M_IN_KM
+        return distance
+
+    def get_spent_calories(self) -> float:
+        """Получить количество затраченных калорий."""
+        spent_calories_swim: float
+        spent_calories_swim = ((self.get_mean_speed() + self.coeff_cal_swim_1)
+                               * self.coeff_cal_swim_2 * self.weight)
+        return spent_calories_swim
 
 
-@pytest.mark.parametrize('input_data, expected', [
-    ([9000, 1, 75], 5.85),
-    ([420, 4, 20], 0.273),
-    ([1206, 12, 6], 0.7838999999999999),
-])
-def test_Training_get_distance(input_data, expected):
-    training = homework.Training(*input_data)
-    assert hasattr(training, 'get_distance'), (
-        'Создайте метод `get_distance` в классе `Training`.'
-    )
-    result = training.get_distance()
-    assert type(result) == float, (
-        'Метод `get_distance` в классе `Trainig`'
-        'должен возвращать значение типа `float`'
-    )
-    assert result == expected, (
-        'Проверьте формулу подсчета дистанции класса `Training`'
-    )
+def read_package(workout_type: str, data: List[int]) -> Training:
+    """Прочитать данные полученные от датчиков."""
+    training_type_dict: Dict[str, Type[Training]] = {
+        'SWM': Swimming,
+        'RUN': Running,
+        'WLK': SportsWalking
+    }
+    try:
+        return (training_type_dict[workout_type](*data))
+    except KeyError:
+        raise ValueError('Неверный тип тренировки')
 
 
-@pytest.mark.parametrize('input_data, expected', [
-    ([9000, 1, 75], 5.85),
-    ([420, 4, 20], 0.06825),
-    ([1206, 12, 6], 0.065325),
-])
-def test_Training_get_mean_speed(input_data, expected):
-    training = homework.Training(*input_data)
-    assert hasattr(training, 'get_mean_speed'), (
-        'Создайте метод `get_mean_speed` в классе `Training`.'
-    )
-    result = training.get_mean_speed()
-    assert type(result) == float, (
-        'Метод `get_mean_speed` в классе `Training`'
-        'должен возвращать значение типа `float`'
-    )
-    assert result == expected, (
-        'Проверьте формулу подсчёта средней скорости движения '
-        'в классе `Training`'
-    )
+def main(training: Training) -> None:
+    """Главная функция."""
+    info = training.show_training_info()
+    print(info.get_message())
 
 
-@pytest.mark.parametrize('input_data', [
-    ([9000, 1, 75]),
-    ([420, 4, 20]),
-    ([1206, 12, 6]),
-])
-def test_Training_get_spent_calories(input_data):
-    training = homework.Training(*input_data)
-    assert hasattr(training, 'get_spent_calories'), (
-        'Создайте метод `get_spent_calories` в классе `Training`.'
-    )
-    assert callable(training.get_spent_calories), (
-        'Проверьте, что `get_spent_calories` - это функция.'
-    )
+if __name__ == '__main__':
+    packages = [
+        ('SWM', [720, 1, 80, 25, 40]),
+        ('RUN', [15000, 1, 75]),
+        ('WLK', [9000, 1, 75, 180]),
+    ]
 
+<<<<<<< HEAD
 
 def test_Training_show_training_info(monkeypatch):
     training = homework.Training(*[720, 1, 80])
@@ -363,3 +343,8 @@ def test_main_output(input_data, expected):
     assert get_message_output == expected, (
         'Метод `main` должен печатать результат в консоль.\n'
     )
+=======
+    for workout_type, data in packages:
+        training = read_package(workout_type, data)
+        main(training)
+>>>>>>> 7a581169b34a89313d0518ac1ff10e1027fcb8ac
