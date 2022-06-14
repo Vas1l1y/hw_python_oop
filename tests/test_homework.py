@@ -362,8 +362,4 @@ def test_main_output(input_data, expected):
         homework.main(training)
     assert get_message_output == expected, (
         'Метод `main` должен печатать результат в консоль.\n'
-<<<<<<< HEAD
     )
-=======
-    )
->>>>>>> 706e3ad2792884972f24ef6f25fbd7dc428cd686

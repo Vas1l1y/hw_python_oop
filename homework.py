@@ -37,14 +37,12 @@ class Training:
 
     def get_distance(self) -> float:
         """Получить дистанцию в км."""
-        distance: float
-        distance = self.action * self.LEN_STEP / self.M_IN_KM
+        distance: float = self.action * self.LEN_STEP / self.M_IN_KM
         return distance
 
     def get_mean_speed(self) -> float:
         """Получить среднюю скорость движения."""
-        speed: float
-        speed = (self.get_distance() / self.duration)
+        speed: float = (self.get_distance() / self.duration)
         return speed
 
     def get_spent_calories(self) -> float:
@@ -70,10 +68,9 @@ class Running(Training):
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
         duration_minute: float = self.duration * self.HOUR_IN_MIN
-        calories: float
-        calories = ((self.coeff_cal_run1 * self.get_mean_speed()
-                    - self.coeff_cal_run2) * self.weight
-                    / self.M_IN_KM * duration_minute)
+        calories: float = ((self.coeff_cal_run1 * self.get_mean_speed()
+                           - self.coeff_cal_run2) * self.weight
+                           / self.M_IN_KM * duration_minute)
         return calories
 
 
@@ -94,9 +91,10 @@ class SportsWalking(Training):
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
         duration_minute: float = self.duration * self.HOUR_IN_MIN
-        calories = (self.coeff_cal_walk_1 * self.weight
-                    + (self.get_mean_speed()**2 // self.height)
-                    * self.coeff_cal_walk_2 * self.weight) * duration_minute
+        calories: float = (self.coeff_cal_walk_1 * self.weight
+                           + (self.get_mean_speed()**2 // self.height)
+                           * self.coeff_cal_walk_2
+                           * self.weight) * duration_minute
         return calories
 
 
@@ -119,9 +117,8 @@ class Swimming(Training):
 
     def get_mean_speed(self) -> float:
         """Получить среднюю скорость движения."""
-        speed: float
-        speed = (self.length_pool * self.count_pool
-                 / self.M_IN_KM / self.duration)
+        speed: float = (self.length_pool * self.count_pool
+                        / self.M_IN_KM / self.duration)
         return speed
 
     def get_distance(self) -> float:
@@ -131,23 +128,24 @@ class Swimming(Training):
 
     def get_spent_calories(self) -> float:
         """Получить количество затраченных калорий."""
-        spent_calories_swim: float
-        spent_calories_swim = ((self.get_mean_speed() + self.coeff_cal_swim_1)
-                               * self.coeff_cal_swim_2 * self.weight)
+        spent_calories_swim: float = ((self.get_mean_speed()
+                                      + self.coeff_cal_swim_1)
+                                      * self.coeff_cal_swim_2
+                                      * self.weight)
         return spent_calories_swim
 
 
 def read_package(workout_type: str, data: List[int]) -> Training:
     """Прочитать данные полученные от датчиков."""
-    training_type_dict: Dict[str, Type[Training]] = {
+    training_type: Dict[str, Type[Training]] = {
         'SWM': Swimming,
         'RUN': Running,
-        'WLK': SportsWalking
+        'WLK': SportsWalking,
     }
     try:
-        return (training_type_dict[workout_type](*data))
+        return (training_type[workout_type](*data))
     except KeyError:
-        raise ValueError('Неверный тип тренировки')
+        raise ValueError(*training_type, ' - Доступные типы тренировки')
 
 
 def main(training: Training) -> None:
@@ -161,6 +159,7 @@ if __name__ == '__main__':
         ('SWM', [720, 1, 80, 25, 40]),
         ('RUN', [15000, 1, 75]),
         ('WLK', [9000, 1, 75, 180]),
+        ('Puc', [9000, 1, 75, 180]),
     ]
 
     for workout_type, data in packages:
